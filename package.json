@@ -1,0 +1,26 @@
+{
+  "name": "caso-dsy1104-fullstack-veterinaria-san-marco-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DavidMiranda816/Caso-DSY1104-Fullstack-Veterinaria-San-Marco-Backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DavidMiranda816/Caso-DSY1104-Fullstack-Veterinaria-San-Marco-Backend/issues"
+  },
+  "homepage": "https://github.com/DavidMiranda816/Caso-DSY1104-Fullstack-Veterinaria-San-Marco-Backend#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0"
+  }
+}
