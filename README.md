@@ -71,8 +71,6 @@ La API utiliza el puerto `8080`. Para acceder desde el PC mientras se ejecuta en
 
 ## Documentación y pruebas
 
-- Swagger UI: [http://127.0.0.1:8080/swagger-ui.html](http://127.0.0.1:8080/swagger-ui.html).
-- OpenAPI: [http://127.0.0.1:8080/v3/api-docs](http://127.0.0.1:8080/v3/api-docs).
 - Las pruebas realizadas de registro y login se hicieron con Postman; los datos guardados se revisaron en MySQL Workbench.
 
 La integración con el frontend sigue pendiente.
