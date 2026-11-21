@@ -1,73 +1,88 @@
-# Caso-DSY1104-Fullstack-Veterinaria-San-Marco-Backend
+# Veterinaria San Marcos — Backend
+
+Backend del proyecto Veterinaria San Marcos, desarrollado con Spring Boot y MySQL. Permite registrar usuarios, iniciar sesión con JWT y administrar cuentas.
+
+La aplicación se ejecuta en una instancia EC2 con Ubuntu. El [frontend](https://github.com/DavidMiranda816/Veterinaria-San-Marcos-2) se mantiene en un repositorio separado.
 
 ## Tecnologías
 
 - Java 21 y Spring Boot 4.1.2
-- Spring Web MVC, Spring Security y JWT Bearer
-- Spring Data JPA y MySQL
-- Flyway para migraciones de base de datos
-- Maven (incluye Maven Wrapper)
-- Springdoc OpenAPI para la documentación de la API
+- Spring Web MVC, Spring Data JPA y MySQL 8.4
+- Spring Security, BCrypt y JWT Bearer
+- Flyway para las migraciones
+- Jakarta Validation y Lombok
+- Swagger / OpenAPI
+- Maven Wrapper
 
-## Requisitos
+## Funcionalidades
 
-- JDK 21
-- MySQL en ejecución
-- Base de datos `veterinaria` creada en MySQL
+Se comprobó con Postman el registro y el inicio de sesión; los datos guardados se revisaron en MySQL Workbench. Las contraseñas se almacenan con hash BCrypt y las credenciales incorrectas devuelven un mensaje genérico.
 
-Configura estas variables de entorno antes de iniciar la aplicación:
+El registro público asigna siempre el rol `CLIENTE`. También se implementaron rutas protegidas para registrar administradores y para listar, modificar y desactivar usuarios. Estas operaciones requieren un token de un usuario con rol `ADMIN`.
 
-- `DB_USERNAME`: usuario de MySQL
-- `DB_PASSWORD`: contraseña de MySQL
-- `JWT_SECRET`: clave JWT codificada en Base64, de al menos 32 bytes una vez decodificada
+## Endpoints
 
-No publiques credenciales ni claves secretas en el repositorio.
+| Método | Ruta | Función | Acceso |
+| --- | --- | --- | --- |
+| POST | `/api/auth/registro` | Registrar usuario | Público |
+| POST | `/api/auth/login` | Iniciar sesión y obtener JWT | Público |
+| POST | `/api/auth/admin/registro` | Registrar administrador | ADMIN |
+| GET | `/api/usuarios` | Listar usuarios | ADMIN |
+| PUT | `/api/usuarios/{id}` | Modificar nombre y correo | ADMIN |
+| PATCH | `/api/usuarios/{id}/desactivar` | Desactivar una cuenta | ADMIN |
 
-## Levantar el proyecto
+Las rutas protegidas reciben el token en la cabecera `Authorization`:
 
-Desde la raíz del proyecto:
-
-```bash
-./mvnw spring-boot:run
-```
-
-En Windows:
-
-```bat
-mvnw.cmd spring-boot:run
-```
-
-La API queda disponible en `http://localhost:8080`. La configuración actual se conecta a MySQL en `127.0.0.1:3306` y Flyway aplica las migraciones al iniciar. La documentación interactiva está en `http://localhost:8080/swagger-ui/index.html`.
-
-## Funcionalidad y endpoints
-
-- `POST /api/auth/registro`: registro público; crea usuarios con rol `CLIENTE`.
-- `POST /api/auth/login`: valida las credenciales y entrega un token JWT Bearer.
-- `POST /api/auth/admin/registro`: registra administradores; requiere un token Bearer de un usuario `ADMIN`.
-- `GET /api/usuarios`: lista usuarios; requiere rol `ADMIN`.
-- `PUT /api/usuarios/{id}`: actualiza un usuario; requiere rol `ADMIN`.
-- `PATCH /api/usuarios/{id}/desactivar`: desactiva un usuario; requiere rol `ADMIN`.
-
-Los endpoints protegidos reciben el token en el encabezado:
-
-```text
+```http
 Authorization: Bearer <token>
 ```
 
-## Pruebas manuales con Postman
+El registro público no requiere autenticación. Si Postman conserva un token inválido o vencido, quita la autorización de esa solicitud (**No Auth**).
 
-Se usó Postman para validar la lógica de autenticación, registro y autorización con estas solicitudes:
+## Primer administrador
 
-1. Enviar `POST /api/auth/registro` sin autorización, con `nombre`, `correo` y `password`; debe crear una cuenta `CLIENTE`.
-2. Enviar `POST /api/auth/login` con el correo y la contraseña; usar el token devuelto para las solicitudes protegidas.
-3. Enviar `GET /api/usuarios` con un token `ADMIN`; un token de `CLIENTE` no debe autorizar esta operación.
-4. Enviar `POST /api/auth/admin/registro` con un token `ADMIN`; la cuenta registrada debe quedar con rol `ADMIN`.
-5. Repetir el registro con un correo ya utilizado para comprobar que la API rechaza duplicados.
+El primer administrador se habilita manualmente para evitar que el registro público permita asignar privilegios. Primero registra una cuenta de confianza mediante `POST /api/auth/registro`. Un operador autorizado con acceso a la base de datos debe asignarle el rol:
 
-Para el registro público, selecciona **No Auth** en Postman. Si adjuntas un token inválido o vencido, la solicitud puede responder `401 Unauthorized`.
+```sql
+UPDATE usuarios SET rol = 'ADMIN' WHERE correo = 'correo-de-confianza';
+```
 
-## Administración de usuarios
+Luego inicia sesión nuevamente con esa cuenta para obtener un token que incluya el rol `ADMIN`. Los administradores existentes pueden crear otros con `POST /api/auth/admin/registro`.
 
-- Para habilitar el primer administrador, registra una cuenta de confianza y un operador con acceso autorizado a la base de datos debe asignarle el rol `ADMIN` (`UPDATE usuarios SET rol = 'ADMIN' WHERE correo = 'correo-de-confianza';`). Después, los administradores existentes pueden crear otros mediante la ruta protegida.
+## Configuración y ejecución
 
-El registro público no recibe ni acepta un rol desde la solicitud: siempre asigna `CLIENTE`.
+Se necesita Java 21 y una base MySQL llamada `veterinaria`, con un usuario que tenga permisos para crear tablas y gestionar sus datos. La aplicación usa MySQL en `127.0.0.1:3306` y la API escucha en el puerto `8080`.
+
+Crear un archivo `.env` en la raíz del proyecto:
+
+```dotenv
+DB_USERNAME=veterinaria_app
+DB_PASSWORD='CONTRASENA_MYSQL'
+JWT_SECRET='CLAVE_BASE64'
+```
+
+Para generar la clave JWT Base64 (de al menos 32 bytes una vez decodificada):
+
+```bash
+openssl rand -base64 32
+```
+
+Copiar el resultado en `JWT_SECRET`. El archivo `.env` está excluido del repositorio.
+
+Desde la raíz del proyecto, ejecutar en Bash:
+
+```bash
+chmod +x mvnw
+set -a
+source .env
+set +a
+./mvnw spring-boot:run
+```
+
+En Windows también se puede iniciar con `mvnw.cmd spring-boot:run`, configurando previamente las variables de entorno. Flyway crea la tabla `usuarios` mediante la migración V1 y JPA valida su estructura al iniciar.
+
+La documentación OpenAPI está disponible en `http://localhost:8080/swagger-ui/index.html`. Para acceder desde el PC mientras se ejecuta en EC2, se puede reenviar el puerto `8080` mediante VS Code Remote SSH.
+
+## Documentación y pruebas
+
+Las pruebas manuales realizadas con Postman cubrieron el registro y el inicio de sesión; los datos guardados se revisaron en MySQL Workbench. La integración con el frontend se mantiene en el repositorio separado.
