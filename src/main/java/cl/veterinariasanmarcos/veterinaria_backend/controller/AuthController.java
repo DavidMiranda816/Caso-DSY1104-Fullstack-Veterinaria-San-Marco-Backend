@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import cl.veterinariasanmarcos.veterinaria_backend.dto.LoginRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.LoginResponse;
+import cl.veterinariasanmarcos.veterinaria_backend.dto.AdministradorRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioResponse;
 import cl.veterinariasanmarcos.veterinaria_backend.services.AuthService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
@@ -30,6 +32,15 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.registrar(request));
+    }
+
+    @PostMapping("/admin/registro")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UsuarioResponse> registrarAdministrador(
+            @Valid @RequestBody AdministradorRequest request) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(authService.registrarAdministrador(request));
     }
 
     @PostMapping("/login")

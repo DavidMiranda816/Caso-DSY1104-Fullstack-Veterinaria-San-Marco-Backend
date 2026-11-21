@@ -1,8 +1,8 @@
 package cl.veterinariasanmarcos.veterinaria_backend.services;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import cl.veterinariasanmarcos.veterinaria_backend.dto.LoginRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.LoginResponse;
+import cl.veterinariasanmarcos.veterinaria_backend.dto.AdministradorRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioResponse;
 import cl.veterinariasanmarcos.veterinaria_backend.mapper.UsuarioMapper;
@@ -44,7 +45,26 @@ public class AuthService {
 
     @Transactional
     public UsuarioResponse registrar(UsuarioRequest request) {
-        String correo = normalizarCorreo(request.getCorreo());
+        return registrarUsuario(
+                usuarioMapper.fromRequest(request),
+                request.getPassword(),
+                "CLIENTE");
+    }
+
+    @Transactional
+    public UsuarioResponse registrarAdministrador(AdministradorRequest request) {
+        return registrarUsuario(
+                usuarioMapper.fromRequest(request),
+                request.getPassword(),
+                "ADMIN");
+    }
+
+    private UsuarioResponse registrarUsuario(
+            Usuario usuario,
+            String password,
+            String rol) {
+
+        String correo = normalizarCorreo(usuario.getCorreo());
 
         if (usuarioRepository.existsByCorreoIgnoreCase(correo)) {
             throw new ResponseStatusException(
@@ -52,24 +72,20 @@ public class AuthService {
                     "El correo ya está registrado");
         }
 
-        if (request.getPassword()
-                .getBytes(StandardCharsets.UTF_8).length > 72) {
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "La contraseña no puede superar 72 bytes");
         }
 
-        Usuario usuario = usuarioMapper.fromRequest(request);
-
-        
-        usuario.setNombre(request.getNombre().trim());
+        usuario.setNombre(usuario.getNombre().trim());
         usuario.setCorreo(correo);
-        usuario.setRol("CLIENTE");
+        usuario.setRol(rol);
         usuario.setFechaCreacion(LocalDateTime.now());
         usuario.setActivo(true);
         usuario.setPasswordHash(
-                passwordEncoder.encode(request.getPassword()));
+                passwordEncoder.encode(password));
 
         Usuario guardado = usuarioRepository.saveAndFlush(usuario);
 

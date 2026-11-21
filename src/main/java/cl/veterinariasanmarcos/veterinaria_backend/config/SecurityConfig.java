@@ -99,6 +99,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/auth/admin/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/auth/registro",
                                 "/api/auth/login")
                         .permitAll()
