@@ -21,11 +21,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/usuarios")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Administración de usuarios", description = "Operaciones disponibles solo para ADMIN.")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -35,7 +38,9 @@ public class UsuarioController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar usuarios")
+    @Operation(
+            summary = "Listar usuarios",
+            description = "Devuelve perfiles seguros sin contraseñas ni hashes.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -52,7 +57,9 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Consultar usuario por ID")
+    @Operation(
+            summary = "Consultar usuario por ID",
+            description = "Devuelve el mismo perfil seguro utilizado por el listado.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -64,12 +71,16 @@ public class UsuarioController {
             @ApiResponse(responseCode = "403", description = "Permiso denegado"),
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
     })
-    public UsuarioResponse obtenerPorId(@PathVariable Long id) {
+    public UsuarioResponse obtenerPorId(
+            @Parameter(description = "Identificador del usuario.", example = "42")
+            @PathVariable Long id) {
         return usuarioService.obtenerPorId(id);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Actualizar nombre y correo de un usuario")
+    @Operation(
+            summary = "Actualizar nombre y correo de un usuario",
+            description = "Actualiza únicamente los campos editables enviados.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -84,6 +95,7 @@ public class UsuarioController {
             @ApiResponse(responseCode = "409", description = "Correo ya registrado")
     })
     public UsuarioResponse actualizar(
+            @Parameter(description = "Identificador del usuario.", example = "42")
             @PathVariable Long id,
             @Valid @RequestBody UsuarioUpdateRequest request) {
 
@@ -91,14 +103,18 @@ public class UsuarioController {
     }
 
     @PatchMapping("/{id}/desactivar")
-    @Operation(summary = "Desactivar una cuenta de usuario")
+    @Operation(
+            summary = "Desactivar una cuenta de usuario",
+            description = "Desactiva la cuenta; sus JWT dejan de autorizar peticiones.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Cuenta desactivada"),
             @ApiResponse(responseCode = "401", description = "Sesión inválida"),
             @ApiResponse(responseCode = "403", description = "Permiso denegado"),
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
     })
-    public ResponseEntity<Void> desactivar(@PathVariable Long id) {
+    public ResponseEntity<Void> desactivar(
+            @Parameter(description = "Identificador del usuario.", example = "42")
+            @PathVariable Long id) {
         usuarioService.desactivar(id);
 
         return ResponseEntity.noContent().build();

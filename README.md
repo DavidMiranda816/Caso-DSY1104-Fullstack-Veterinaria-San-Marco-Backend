@@ -16,7 +16,7 @@ No uses `localhost` en `VITE_API_URL` cuando el navegador abre el frontend desde
 
 El backend permite por defecto solicitudes desde `http://localhost:5173`. Para conectarlo desde otra dirección, configura `CORS_ALLOWED_ORIGINS` con el origen exacto del frontend, incluyendo esquema y puerto cuando corresponda, pero sin `/api` ni otras rutas. Para permitir más de uno, sepáralos por comas. También asegúrate de que las reglas de red de las instancias permitan que el navegador llegue al puerto `8080` del backend.
 
-Esta API actualmente implementa autenticación (`POST /api/auth/registro` y `POST /api/auth/login`) y administración de usuarios (`/api/usuarios`, solo ADMIN). El frontend veterinario todavía usa datos de `localStorage` para productos, clientes, categorías y solicitudes, y el inicio de sesión usa credenciales locales; Axios por sí solo no conecta esas funciones porque sus endpoints aún no existen en este backend. La primera integración posible es reemplazar el inicio de sesión local por `POST /api/auth/login`; luego se pueden migrar los módulos que tengan endpoints disponibles.
+Esta API implementa registro y autenticación (`/api/auth`), revalidación de sesión y administración de usuarios (`/api/usuarios`, solo ADMIN). El frontend veterinario todavía usa datos de `localStorage` para productos, clientes, categorías y solicitudes; sus endpoints aún no existen en este backend.
 
 ## Tecnologías
 
@@ -110,7 +110,9 @@ mvn spring-boot:run
 
 En Windows también se puede iniciar con `mvn spring-boot:run`, configurando previamente las variables de entorno. Flyway crea la tabla `usuarios` mediante la migración V1 y JPA valida su estructura al iniciar.
 
-La documentación OpenAPI está disponible en `http://localhost:8080/swagger-ui/index.html`. Para acceder desde el PC mientras se ejecuta en EC2, se puede reenviar el puerto `8080` mediante VS Code Remote SSH.
+### Swagger y OpenAPI en vivo
+
+Con el backend en ejecución, la documentación interactiva está en `http://localhost:8080/swagger-ui/index.html` y la especificación OpenAPI JSON en `http://localhost:8080/v3/api-docs`. Swagger UI muestra los contratos, DTO, validaciones, permisos y respuestas documentadas por los controladores. Para probar rutas protegidas, selecciona **Authorize** e ingresa el JWT (sin anteponer `Bearer`); la interfaz agregará el esquema automáticamente. Para acceder desde el PC mientras se ejecuta en EC2, se puede reenviar el puerto `8080` mediante VS Code Remote SSH.
 
 ## Documentación y pruebas
 

@@ -22,10 +22,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Autenticación", description = "Registro, inicio y revalidación de sesión.")
 public class AuthController {
 
     private final AuthService authService;
@@ -35,9 +37,16 @@ public class AuthController {
     }
 
     @PostMapping("/registro")
-    @Operation(summary = "Registrar una cuenta pública con rol CLIENTE")
+    @Operation(
+            summary = "Registrar una cuenta pública",
+            description = "Crea la cuenta con el rol CLIENTE, asignado por el servidor.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Cuenta creada"),
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Cuenta creada",
+                    content = @Content(
+                            schema = @Schema(
+                                    implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "409", description = "Correo ya registrado")
     })
@@ -50,9 +59,16 @@ public class AuthController {
 
     @PostMapping("/admin/registro")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Registrar un administrador")
+    @Operation(
+            summary = "Registrar un administrador",
+            description = "Requiere un JWT vigente cuya cuenta tenga actualmente el rol ADMIN.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Administrador creado"),
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Administrador creado",
+                    content = @Content(
+                            schema = @Schema(
+                                    implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "401", description = "Sesión inválida"),
             @ApiResponse(responseCode = "403", description = "Permiso denegado"),
@@ -66,9 +82,16 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Iniciar sesión y obtener JWT")
+    @Operation(
+            summary = "Iniciar sesión y obtener JWT",
+            description = "Devuelve un JWT Bearer y el perfil seguro de la cuenta.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Autenticación correcta"),
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Autenticación correcta",
+                    content = @Content(
+                            schema = @Schema(
+                                    implementation = LoginResponse.class))),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
     })
@@ -80,7 +103,9 @@ public class AuthController {
 
     @GetMapping("/me")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Revalidar la sesión y consultar el usuario actual")
+    @Operation(
+            summary = "Revalidar la sesión y consultar el usuario actual",
+            description = "Confirma que la cuenta existe y sigue activa; acepta cualquier rol autenticado.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
