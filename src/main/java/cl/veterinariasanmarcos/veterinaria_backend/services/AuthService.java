@@ -124,8 +124,30 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public UsuarioResponse obtenerUsuarioActual(String subject) {
+        Long id;
+        try {
+            id = Long.valueOf(subject);
+        } catch (NumberFormatException exception) {
+            throw sesionInvalida();
+        }
+
+        Usuario usuario = usuarioRepository.findById(id)
+                .filter(cuenta -> Boolean.TRUE.equals(cuenta.getActivo()))
+                .orElseThrow(this::sesionInvalida);
+
+        return usuarioMapper.toResponse(usuario);
+    }
+
     private String normalizarCorreo(String correo) {
         return correo.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private ResponseStatusException sesionInvalida() {
+        return new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "La sesión no es válida");
     }
 
     private ResponseStatusException credencialesIncorrectas() {

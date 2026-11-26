@@ -38,6 +38,11 @@ public class UsuarioService {
         return respuestas;
     }
 
+    @Transactional(readOnly = true)
+    public UsuarioResponse obtenerPorId(Long id) {
+        return usuarioMapper.toResponse(buscarUsuario(id));
+    }
+
     @Transactional
     public UsuarioResponse actualizar(Long id, UsuarioUpdateRequest request) {
 

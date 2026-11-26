@@ -1,7 +1,7 @@
 package cl.veterinariasanmarcos.veterinaria_backend.config;
 
-import java.util.Base64;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 
 import javax.crypto.SecretKey;
@@ -10,28 +10,42 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 
-import com.nimbusds.jose.proc.SecurityContext;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+
+import cl.veterinariasanmarcos.veterinaria_backend.model.Usuario;
+import cl.veterinariasanmarcos.veterinaria_backend.repository.UsuarioRepository;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.nimbusds.jose.proc.SecurityContext;
 
 @Configuration
+@SecurityScheme(
+        name = "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT")
 public class SecurityConfig {
 
     @Bean
@@ -76,19 +90,26 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter roles =
-                new JwtGrantedAuthoritiesConverter();
+    public Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter(
+            UsuarioRepository usuarioRepository) {
+        return jwt -> {
+            Long id;
+            try {
+                id = Long.valueOf(jwt.getSubject());
+            } catch (NumberFormatException exception) {
+                throw new InvalidBearerTokenException("La sesión no es válida");
+            }
 
-        roles.setAuthoritiesClaimName("roles");
-        roles.setAuthorityPrefix("ROLE_");
+            Usuario usuario = usuarioRepository.findById(id)
+                    .filter(cuenta -> Boolean.TRUE.equals(cuenta.getActivo()))
+                    .orElseThrow(() -> new InvalidBearerTokenException(
+                            "La sesión no es válida"));
 
-        JwtAuthenticationConverter converter =
-                new JwtAuthenticationConverter();
-
-        converter.setJwtGrantedAuthoritiesConverter(roles);
-
-        return converter;
+            return new JwtAuthenticationToken(
+                    jwt,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol())),
+                    usuario.getId().toString());
+        };
     }
 
     @Bean
@@ -122,7 +143,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JwtAuthenticationConverter converter) throws Exception {
+            Converter<Jwt, AbstractAuthenticationToken> converter) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
