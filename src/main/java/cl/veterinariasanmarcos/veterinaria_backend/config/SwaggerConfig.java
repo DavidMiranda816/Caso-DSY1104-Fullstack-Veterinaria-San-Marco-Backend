@@ -18,10 +18,11 @@ public class SwaggerConfig {
                         .title("API Veterinaria San Marcos")
                         .version("1.0.0")
                         .description(
-                                "API REST para autenticación y administración de cuentas "
-                                        + "de Veterinaria San Marcos. Las operaciones protegidas "
-                                        + "requieren un JWT Bearer vigente; la autorización se "
-                                        + "resuelve con el rol y estado actuales de la cuenta."))
+                                "API REST para autenticación, administración de cuentas y "
+                                        + "catálogo de Veterinaria San Marcos. Las operaciones "
+                                        + "de negocio requieren un JWT Bearer vigente; la "
+                                        + "autorización se resuelve con el rol y estado actuales "
+                                        + "de la cuenta."))
                 .components(new Components()
                         .addSecuritySchemes(
                                 "bearerAuth",

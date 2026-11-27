@@ -2,6 +2,7 @@ package cl.veterinariasanmarcos.veterinaria_backend.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -23,4 +24,10 @@ public class UsuarioUpdateRequest {
             format = "email", maxLength = 254,
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String correo;
+
+    @Pattern(regexp = "ADMIN|RECEPCIONISTA|CLIENTE")
+    @Schema(description = "Rol a asignar. Si se omite, conserva el rol actual.",
+            allowableValues = {"ADMIN", "RECEPCIONISTA", "CLIENTE"},
+            example = "RECEPCIONISTA")
+    private String rol;
 }

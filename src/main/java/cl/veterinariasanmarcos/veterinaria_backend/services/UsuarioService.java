@@ -62,6 +62,9 @@ public class UsuarioService {
 
         usuario.setNombre(request.getNombre().trim());
         usuario.setCorreo(correo);
+        if (request.getRol() != null) {
+            usuario.setRol(request.getRol());
+        }
 
         Usuario guardado = usuarioRepository.saveAndFlush(usuario);
 

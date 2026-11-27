@@ -121,7 +121,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "PATCH", "OPTIONS"));
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(
                 List.of("Authorization", "Content-Type"));
 
@@ -153,6 +153,30 @@ public class SecurityConfig {
                                 "/api/auth/registro",
                                 "/api/auth/login")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me")
+                        .authenticated()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/productos",
+                                "/api/productos/**",
+                                "/api/categorias",
+                                "/api/categorias/**")
+                        .authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/productos",
+                                "/api/categorias")
+                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/productos/**",
+                                "/api/categorias/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/productos/**",
+                                "/api/categorias/**")
+                        .hasRole("ADMIN")
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -162,7 +186,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/usuarios", "/api/usuarios/**")
                         .hasRole("ADMIN")
                         .anyRequest()
-                        .authenticated())
+                        .denyAll())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(converter)));

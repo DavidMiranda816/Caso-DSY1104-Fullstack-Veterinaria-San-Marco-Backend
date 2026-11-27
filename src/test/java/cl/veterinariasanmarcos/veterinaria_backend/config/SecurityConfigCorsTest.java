@@ -25,7 +25,7 @@ class SecurityConfigCorsTest {
                 List.of("http://localhost:5173", "https://frontend.example"),
                 configuration.getAllowedOrigins());
         assertEquals(
-                List.of("GET", "POST", "PUT", "PATCH", "OPTIONS"),
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
                 configuration.getAllowedMethods());
         assertNull(configuration.checkOrigin("https://other.example"));
     }

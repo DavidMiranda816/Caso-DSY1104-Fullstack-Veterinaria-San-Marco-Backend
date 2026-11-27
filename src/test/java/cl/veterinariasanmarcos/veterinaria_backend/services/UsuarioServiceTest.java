@@ -2,6 +2,7 @@ package cl.veterinariasanmarcos.veterinaria_backend.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioResponse;
+import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioUpdateRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.mapper.UsuarioMapper;
 import cl.veterinariasanmarcos.veterinaria_backend.model.Usuario;
 import cl.veterinariasanmarcos.veterinaria_backend.repository.UsuarioRepository;
@@ -65,5 +67,54 @@ class UsuarioServiceTest {
                 () -> usuarioService.obtenerPorId(404L));
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void actualizarPuedeAsignarRolRecepcionista() {
+        Usuario usuario = Usuario.builder()
+                .id(17L)
+                .nombre("Usuario")
+                .correo("usuario@example.com")
+                .rol("CLIENTE")
+                .activo(true)
+                .build();
+        when(usuarioRepository.findById(17L)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByCorreoIgnoreCase("recepcion@example.com"))
+                .thenReturn(Optional.empty());
+        when(usuarioRepository.saveAndFlush(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UsuarioUpdateRequest request = new UsuarioUpdateRequest();
+        request.setNombre("Recepcionista");
+        request.setCorreo("recepcion@example.com");
+        request.setRol("RECEPCIONISTA");
+
+        UsuarioResponse response = usuarioService.actualizar(17L, request);
+
+        assertEquals("RECEPCIONISTA", response.getRol());
+    }
+
+    @Test
+    void actualizarSinRolConservaElRolActual() {
+        Usuario usuario = Usuario.builder()
+                .id(17L)
+                .nombre("Usuario")
+                .correo("usuario@example.com")
+                .rol("VENDEDOR")
+                .activo(true)
+                .build();
+        when(usuarioRepository.findById(17L)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByCorreoIgnoreCase("usuario@example.com"))
+                .thenReturn(Optional.empty());
+        when(usuarioRepository.saveAndFlush(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UsuarioUpdateRequest request = new UsuarioUpdateRequest();
+        request.setNombre("Usuario actualizado");
+        request.setCorreo("usuario@example.com");
+
+        UsuarioResponse response = usuarioService.actualizar(17L, request);
+
+        assertEquals("VENDEDOR", response.getRol());
     }
 }

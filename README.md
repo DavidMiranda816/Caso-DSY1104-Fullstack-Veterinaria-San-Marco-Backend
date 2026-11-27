@@ -16,7 +16,9 @@ No uses `localhost` en `VITE_API_URL` cuando el navegador abre el frontend desde
 
 El backend permite por defecto solicitudes desde `http://localhost:5173`. Para conectarlo desde otra dirección, configura `CORS_ALLOWED_ORIGINS` con el origen exacto del frontend, incluyendo esquema y puerto cuando corresponda, pero sin `/api` ni otras rutas. Para permitir más de uno, sepáralos por comas. También asegúrate de que las reglas de red de las instancias permitan que el navegador llegue al puerto `8080` del backend.
 
-Esta API implementa registro y autenticación (`/api/auth`), revalidación de sesión y administración de usuarios (`/api/usuarios`, solo ADMIN). El frontend veterinario todavía usa datos de `localStorage` para productos, clientes, categorías y solicitudes; sus endpoints aún no existen en este backend.
+La API permite `GET`, `POST`, `PUT`, `PATCH`, `DELETE` y `OPTIONS`, y las cabeceras `Authorization` y `Content-Type`.
+
+Esta API implementa autenticación (`/api/auth`), administración de usuarios (`/api/usuarios`) y CRUD de productos y categorías (`/api/productos`, `/api/categorias`). El frontend todavía conserva en `localStorage` los clientes y solicitudes; sus endpoints no forman parte de esta integración.
 
 ## Tecnologías
 
@@ -32,7 +34,7 @@ Esta API implementa registro y autenticación (`/api/auth`), revalidación de se
 
 Se comprobó con Postman el registro y el inicio de sesión; los datos guardados se revisaron en MySQL Workbench. Las contraseñas se almacenan con hash BCrypt y las credenciales incorrectas devuelven un mensaje genérico.
 
-El registro público asigna siempre el rol `CLIENTE`. También se implementaron rutas protegidas para registrar administradores y para listar, modificar y desactivar usuarios. Estas operaciones requieren un token de un usuario con rol `ADMIN`.
+El registro público asigna siempre el rol `CLIENTE`. Las operaciones del catálogo requieren una sesión vigente; crear, modificar y eliminar productos y categorías requiere además el rol `ADMIN`.
 
 ## Endpoints
 
@@ -44,8 +46,20 @@ El registro público asigna siempre el rol `CLIENTE`. También se implementaron 
 | POST | `/api/auth/admin/registro` | Registrar administrador | ADMIN |
 | GET | `/api/usuarios` | Listar usuarios | ADMIN |
 | GET | `/api/usuarios/{id}` | Consultar usuario para ficha y edición | ADMIN |
-| PUT | `/api/usuarios/{id}` | Modificar nombre y correo | ADMIN |
+| PUT | `/api/usuarios/{id}` | Modificar nombre, correo y opcionalmente rol | ADMIN |
 | PATCH | `/api/usuarios/{id}/desactivar` | Desactivar una cuenta | ADMIN |
+| GET | `/api/productos` | Listar productos del catálogo | Usuario autenticado |
+| GET | `/api/productos/{id}` | Consultar producto | Usuario autenticado |
+| POST | `/api/productos` | Crear producto | ADMIN |
+| PUT | `/api/productos/{id}` | Actualizar producto | ADMIN |
+| DELETE | `/api/productos/{id}` | Eliminar producto | ADMIN |
+| GET | `/api/categorias` | Listar categorías | Usuario autenticado |
+| GET | `/api/categorias/{id}` | Consultar categoría | Usuario autenticado |
+| POST | `/api/categorias` | Crear categoría | ADMIN |
+| PUT | `/api/categorias/{id}` | Actualizar categoría | ADMIN |
+| DELETE | `/api/categorias/{id}` | Eliminar categoría | ADMIN |
+
+Los cuerpos coinciden con los formularios administrativos del frontend: un producto recibe `nombre`, `categoria`, `precio` y `stock`; `descripcion` e `imagen` son opcionales para la ficha pública. `categoria` es el nombre en texto que usa actualmente el formulario, no un ID. Una categoría recibe `nombre` y `descripcion`. Las respuestas agregan el `id` numérico generado por el backend.
 
 Las rutas protegidas reciben el token en la cabecera `Authorization`:
 
@@ -63,9 +77,26 @@ Authorization: Bearer <token>
 | `POST /api/auth/admin/registro` | `ADMIN` |
 | `GET /api/usuarios`, `GET /api/usuarios/{id}` | `ADMIN` |
 | `PUT /api/usuarios/{id}`, `PATCH /api/usuarios/{id}/desactivar` | `ADMIN` |
-| Catálogo y solicitudes | Rutas no implementadas aquí; permisos por acordar antes de integrarlas |
+| `PUT /api/usuarios/{id}` con `rol` | `ADMIN`; acepta `ADMIN`, `RECEPCIONISTA` o `CLIENTE`. Si se omite, conserva el rol. |
+| `GET /api/productos/**`, `GET /api/categorias/**` | Cualquier usuario autenticado y activo |
+| `POST`, `PUT`, `DELETE` en `/api/productos/**` y `/api/categorias/**` | `ADMIN` |
+| Citas y fichas de pacientes | Rutas aún no implementadas; no se conceden permisos hasta que existan sus contratos |
+| Rutas no declaradas en la configuración de seguridad | Denegadas por defecto |
 
-`CLIENTE` es el identificador canónico del rol de cliente/dueño; no se emite ni se acepta `DUENO` como alias. La autorización usa el estado y rol actuales de la cuenta en la base de datos, no los roles incluidos en un JWT anterior. Por eso una cuenta desactivada recibe `401` y un cambio de rol tiene efecto inmediato en las rutas protegidas. Los roles distintos de `ADMIN` no pueden gestionar usuarios; no se asignan permisos administrativos a `RECEPCIONISTA` ni a otros roles sin acuerdo para cada módulo.
+### Roles y diferencias con el frontend
+
+| Rol | Contrato |
+| --- | --- |
+| `ADMIN` | Gestiona usuarios, asigna roles y administra productos y categorías. |
+| `RECEPCIONISTA` | Identificador backend para Recepcionista/Operador. No gestiona usuarios ni modifica el catálogo; las operaciones de citas y fichas indicadas por la matriz aún no tienen endpoints backend. |
+| `CLIENTE` | Identificador canónico del dueño/cliente; no se acepta `DUENO` como alias. Las operaciones de citas e historial propio aún no tienen endpoints backend. |
+| `VENDEDOR`, `ENCARGADO` | Roles heredados de otro proyecto; se conservan en la base de datos, pero no se pueden asignar mediante la edición de usuarios ni reciben permisos sobre rutas no declaradas. |
+
+La autorización usa el estado y rol actuales de la cuenta en la base de datos, no los roles incluidos en un JWT anterior. Por eso una cuenta desactivada recibe `401` y un cambio de rol tiene efecto inmediato en las rutas protegidas. El registro público siempre crea `CLIENTE`; el endpoint administrativo crea `ADMIN`.
+
+El frontend está en un repositorio separado y aún necesita alineación: su función `estaAutenticado()` depende de `obtenerTokenAdmin()`, que solo reconoce `ADMIN`; no existe un flujo o guard para `RECEPCIONISTA`. Su DTO de edición de usuario solo envía nombre y correo, por lo que la asignación de rol habilitada aquí requiere incorporar ese campo en el frontend. Además, las vistas actuales del catálogo son públicas, pero estos GET ahora exigen Bearer; al conectar Axios, el frontend deberá proteger esas vistas o rediseñar explícitamente la excepción.
+
+Swagger UI y OpenAPI permanecen públicos como excepción técnica para consultar y probar la documentación. El resto de rutas de negocio requiere autenticación según la matriz.
 
 El registro público no requiere autenticación. Si Postman conserva un token inválido o vencido, quita la autorización de esa solicitud (**No Auth**).
 
@@ -77,7 +108,7 @@ El primer administrador se habilita manualmente para evitar que el registro púb
 UPDATE usuarios SET rol = 'ADMIN' WHERE correo = 'correo-de-confianza';
 ```
 
-Luego inicia sesión nuevamente con esa cuenta para obtener un token que incluya el rol `ADMIN`. Los administradores existentes pueden crear otros con `POST /api/auth/admin/registro`.
+Luego inicia sesión nuevamente con esa cuenta para obtener un token que incluya el rol `ADMIN`. Los administradores existentes pueden crear otros con `POST /api/auth/admin/registro` o asignar roles canónicos al editar una cuenta.
 
 ## Configuración y ejecución
 
@@ -108,7 +139,7 @@ set +a
 mvn spring-boot:run
 ```
 
-En Windows también se puede iniciar con `mvn spring-boot:run`, configurando previamente las variables de entorno. Flyway crea la tabla `usuarios` mediante la migración V1 y JPA valida su estructura al iniciar.
+En Windows también se puede iniciar con `mvn spring-boot:run`, configurando previamente las variables de entorno. Flyway crea las tablas de usuarios, categorías y productos mediante migraciones independientes (V1–V4), y V5 agrega `RECEPCIONISTA` sin retirar los roles heredados; JPA valida su estructura al iniciar.
 
 ### Swagger y OpenAPI en vivo
 

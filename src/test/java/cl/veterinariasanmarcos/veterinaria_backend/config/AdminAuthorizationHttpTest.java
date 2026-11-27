@@ -1,10 +1,13 @@
 package cl.veterinariasanmarcos.veterinaria_backend.config;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -142,11 +145,62 @@ class AdminAuthorizationHttpTest {
     @Test
     void authenticatedNonAdminIsDeniedFromUserManagement() throws Exception {
         when(usuarioRepository.findById(8L))
-                .thenReturn(Optional.of(usuario(8L, "CLIENTE", true)));
+                .thenReturn(Optional.of(usuario(8L, "RECEPCIONISTA", true)));
 
         mockMvc.perform(get("/api/usuarios")
                         .header("Authorization", "Bearer " + token("8", "ADMIN", 60)))
                 .andExpect(status().isForbidden());
+
+        verifyNoInteractions(usuarioService);
+    }
+
+    @Test
+    void adminCanAssignCanonicalRoleToUser() throws Exception {
+        when(usuarioRepository.findById(7L))
+                .thenReturn(Optional.of(usuario(7L, "ADMIN", true)));
+        when(usuarioService.actualizar(eq(2L), any()))
+                .thenReturn(UsuarioResponse.builder()
+                        .id(2L)
+                        .nombre("Recepcionista")
+                        .correo("recepcion@example.com")
+                        .rol("RECEPCIONISTA")
+                        .activo(true)
+                        .build());
+
+        mockMvc.perform(put("/api/usuarios/2")
+                        .header("Authorization", "Bearer " + token("7", "ADMIN", 60))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Recepcionista",
+                                  "correo": "recepcion@example.com",
+                                  "rol": "RECEPCIONISTA"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").value("RECEPCIONISTA"));
+
+        org.mockito.Mockito.verify(usuarioService).actualizar(
+                eq(2L),
+                argThat(request -> "RECEPCIONISTA".equals(request.getRol())));
+    }
+
+    @Test
+    void adminCannotAssignLegacyRoleThroughUserUpdate() throws Exception {
+        when(usuarioRepository.findById(7L))
+                .thenReturn(Optional.of(usuario(7L, "ADMIN", true)));
+
+        mockMvc.perform(put("/api/usuarios/2")
+                        .header("Authorization", "Bearer " + token("7", "ADMIN", 60))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Usuario",
+                                  "correo": "usuario@example.com",
+                                  "rol": "VENDEDOR"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
 
         verifyNoInteractions(usuarioService);
     }

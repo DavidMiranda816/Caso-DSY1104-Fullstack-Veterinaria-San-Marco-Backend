@@ -79,8 +79,9 @@ public class UsuarioController {
 
     @PutMapping("/{id}")
     @Operation(
-            summary = "Actualizar nombre y correo de un usuario",
-            description = "Actualiza únicamente los campos editables enviados.")
+            summary = "Actualizar un usuario y, opcionalmente, su rol",
+            description = "Actualiza nombre y correo; el rol es opcional y solo "
+                    + "acepta ADMIN, RECEPCIONISTA o CLIENTE.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
