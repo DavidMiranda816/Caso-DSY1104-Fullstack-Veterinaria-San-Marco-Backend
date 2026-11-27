@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -132,12 +134,14 @@ public class UsuarioController {
             @ApiResponse(responseCode = "204", description = "Cuenta desactivada"),
             @ApiResponse(responseCode = "401", description = "Sesión inválida"),
             @ApiResponse(responseCode = "403", description = "Permiso denegado"),
-            @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+            @ApiResponse(responseCode = "409", description = "No puedes desactivar tu propia cuenta")
     })
     public ResponseEntity<Void> desactivar(
             @Parameter(description = "Identificador del usuario.", example = "42")
-            @PathVariable Long id) {
-        usuarioService.desactivar(id);
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        usuarioService.desactivar(id, jwt.getSubject());
 
         return ResponseEntity.noContent().build();
     }

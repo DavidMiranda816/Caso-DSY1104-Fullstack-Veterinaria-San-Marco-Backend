@@ -69,7 +69,13 @@ public class UsuarioService {
     }
 
     @Transactional
-    public void desactivar(Long id) {
+    public void desactivar(Long id, String subject) {
+        if (id.toString().equals(subject)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No puedes desactivar tu propia cuenta");
+        }
+
         Usuario usuario = buscarUsuario(id);
 
         usuario.setActivo(false);
