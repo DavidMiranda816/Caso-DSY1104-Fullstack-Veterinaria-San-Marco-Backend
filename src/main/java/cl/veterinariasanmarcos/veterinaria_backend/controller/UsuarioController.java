@@ -2,17 +2,21 @@ package cl.veterinariasanmarcos.veterinaria_backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioAltaRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioResponse;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioUpdateRequest;
+import cl.veterinariasanmarcos.veterinaria_backend.services.AuthService;
 import cl.veterinariasanmarcos.veterinaria_backend.services.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -33,8 +37,26 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    private final AuthService authService;
+
+    public UsuarioController(UsuarioService usuarioService, AuthService authService) {
         this.usuarioService = usuarioService;
+        this.authService = authService;
+    }
+
+    @PostMapping
+    @Operation(summary = "Crear una cuenta de Kaiju con su perfil")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Usuario creado"),
+            @ApiResponse(responseCode = "400", description = "Datos o perfil inválidos"),
+            @ApiResponse(responseCode = "401", description = "Sesión inválida"),
+            @ApiResponse(responseCode = "403", description = "Permiso denegado"),
+            @ApiResponse(responseCode = "409", description = "Correo ya registrado")
+    })
+    public ResponseEntity<UsuarioResponse> crear(
+            @Valid @RequestBody UsuarioAltaRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(authService.registrarUsuarioKaiju(request));
     }
 
     @GetMapping

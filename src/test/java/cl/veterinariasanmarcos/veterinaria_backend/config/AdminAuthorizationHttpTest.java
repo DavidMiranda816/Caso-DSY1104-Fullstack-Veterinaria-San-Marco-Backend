@@ -1,6 +1,8 @@
 package cl.veterinariasanmarcos.veterinaria_backend.config;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -31,6 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 import cl.veterinariasanmarcos.veterinaria_backend.controller.AuthController;
 import cl.veterinariasanmarcos.veterinaria_backend.controller.UsuarioController;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.AdministradorRequest;
+import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioAltaRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioResponse;
 import cl.veterinariasanmarcos.veterinaria_backend.model.Usuario;
 import cl.veterinariasanmarcos.veterinaria_backend.repository.UsuarioRepository;
@@ -119,6 +122,63 @@ class AdminAuthorizationHttpTest {
                                 }
                                 """))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void activeAdminCreatesKaijuUserWithRequestedRole() throws Exception {
+        when(usuarioRepository.findById(7L))
+                .thenReturn(Optional.of(usuario(7L, "ADMIN", true)));
+        when(authService.registrarUsuarioKaiju(any(UsuarioAltaRequest.class)))
+                .thenReturn(UsuarioResponse.builder().id(12L).rol("VENDEDOR").build());
+
+        mockMvc.perform(post("/api/usuarios")
+                        .header("Authorization", "Bearer " + token("7", "ADMIN", 60))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(altaKaiju("VENDEDOR")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rol").value("VENDEDOR"));
+
+        verify(authService).registrarUsuarioKaiju(argThat(request ->
+                request.getRol() == UsuarioAltaRequest.RolKaiju.VENDEDOR));
+    }
+
+    @Test
+    void nonAdminCannotCreateKaijuUsers() throws Exception {
+        when(usuarioRepository.findById(8L))
+                .thenReturn(Optional.of(usuario(8L, "ENCARGADO", true)));
+
+        mockMvc.perform(post("/api/usuarios")
+                        .header("Authorization", "Bearer " + token("8", "ENCARGADO", 60))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(altaKaiju("VENDEDOR")))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void kaijuCreationRejectsVeterinaryRole() throws Exception {
+        when(usuarioRepository.findById(7L))
+                .thenReturn(Optional.of(usuario(7L, "ADMIN", true)));
+
+        mockMvc.perform(post("/api/usuarios")
+                        .header("Authorization", "Bearer " + token("7", "ADMIN", 60))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(altaKaiju("CLIENTE")))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(authService);
+    }
+
+    private String altaKaiju(String rol) {
+        return """
+                {
+                  "nombre": "Usuario Kaiju",
+                  "correo": "nuevo@example.com",
+                  "password": "contrasena-segura",
+                  "rol": "%s"
+                }
+                """.formatted(rol);
     }
 
     @Test

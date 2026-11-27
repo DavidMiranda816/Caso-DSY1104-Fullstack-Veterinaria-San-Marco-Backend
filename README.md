@@ -42,6 +42,7 @@ El registro público asigna siempre el rol `CLIENTE`. También se implementaron 
 | POST | `/api/auth/login` | Iniciar sesión y obtener JWT | Público |
 | GET | `/api/auth/me` | Revalidar la sesión y consultar el usuario actual | Cualquier usuario autenticado |
 | POST | `/api/auth/admin/registro` | Registrar administrador | ADMIN |
+| POST | `/api/usuarios` | Crear una cuenta de Kaiju con nombre, correo, contraseña y rol | ADMIN |
 | GET | `/api/usuarios` | Listar usuarios | ADMIN |
 | GET | `/api/usuarios/{id}` | Consultar usuario para ficha y edición | ADMIN |
 | PUT | `/api/usuarios/{id}` | Modificar nombre y correo | ADMIN |
@@ -61,13 +62,19 @@ Authorization: Bearer <token>
 | `POST /api/auth/login` | Público |
 | `GET /api/auth/me` | Cualquier usuario autenticado y activo |
 | `POST /api/auth/admin/registro` | `ADMIN` |
-| `GET /api/usuarios`, `GET /api/usuarios/{id}` | `ADMIN` |
+| `POST /api/usuarios`, `GET /api/usuarios`, `GET /api/usuarios/{id}` | `ADMIN` |
 | `PUT /api/usuarios/{id}`, `PATCH /api/usuarios/{id}/desactivar` | `ADMIN` |
 | Catálogo y solicitudes | Rutas no implementadas aquí; permisos por acordar antes de integrarlas |
 
 `CLIENTE` es el identificador canónico del rol de cliente/dueño; no se emite ni se acepta `DUENO` como alias. La autorización usa el estado y rol actuales de la cuenta en la base de datos, no los roles incluidos en un JWT anterior. Por eso una cuenta desactivada recibe `401` y un cambio de rol tiene efecto inmediato en las rutas protegidas. Los roles distintos de `ADMIN` no pueden gestionar usuarios; no se asignan permisos administrativos a `RECEPCIONISTA` ni a otros roles sin acuerdo para cada módulo.
 
 El registro público no requiere autenticación. Si Postman conserva un token inválido o vencido, quita la autorización de esa solicitud (**No Auth**).
+
+## Cliente móvil Kaiju Inventory
+
+[Kaiju Inventory](https://github.com/DavidMiranda816/Caso_DSY1105_Aplicaciones_Moviles_KAIJU) usa esta misma API. Enviando el JWT de un administrador a `POST /api/usuarios`, puede crear cuentas con `rol` igual a `ADMIN`, `VENDEDOR` o `ENCARGADO`. La migración V2 habilita los dos últimos roles. El registro público de Veterinaria sigue asignando `CLIENTE`.
+
+Kaiju usa `PUT /api/usuarios/{id}` para editar el nombre y el correo y `PATCH /api/usuarios/{id}/desactivar` para dar de baja la cuenta. Una cuenta desactivada sale del listado de cuentas activas de Kaiju y pierde el acceso.
 
 ## Primer administrador
 

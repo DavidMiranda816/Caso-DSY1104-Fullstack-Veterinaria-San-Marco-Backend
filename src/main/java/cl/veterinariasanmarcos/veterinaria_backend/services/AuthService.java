@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.LoginRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.LoginResponse;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.AdministradorRequest;
+import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioAltaRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioResponse;
 import cl.veterinariasanmarcos.veterinaria_backend.mapper.UsuarioMapper;
@@ -57,6 +58,14 @@ public class AuthService {
                 usuarioMapper.fromRequest(request),
                 request.getPassword(),
                 "ADMIN");
+    }
+
+    @Transactional
+    public UsuarioResponse registrarUsuarioKaiju(UsuarioAltaRequest request) {
+        return registrarUsuario(
+                usuarioMapper.fromRequest(request),
+                request.getPassword(),
+                request.getRol().name());
     }
 
     private UsuarioResponse registrarUsuario(

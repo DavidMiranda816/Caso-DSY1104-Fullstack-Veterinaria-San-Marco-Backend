@@ -2,6 +2,7 @@ package cl.veterinariasanmarcos.veterinaria_backend.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import cl.veterinariasanmarcos.veterinaria_backend.dto.AdministradorRequest;
+import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioAltaRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.dto.UsuarioRequest;
 import cl.veterinariasanmarcos.veterinaria_backend.mapper.UsuarioMapper;
 import cl.veterinariasanmarcos.veterinaria_backend.model.Usuario;
@@ -78,6 +82,29 @@ class AuthServiceTest {
                 authService.registrarAdministrador(request).getRol());
         verify(usuarioRepository).saveAndFlush(
                 argThat(usuario -> "ADMIN".equals(usuario.getRol())));
+    }
+
+    @ParameterizedTest
+    @EnumSource(UsuarioAltaRequest.RolKaiju.class)
+    void altaKaijuGuardaPerfilActivoYHashDeContrasena(UsuarioAltaRequest.RolKaiju rol) {
+        when(usuarioRepository.saveAndFlush(any(Usuario.class)))
+                .thenAnswer(invocation -> {
+                    Usuario usuario = invocation.getArgument(0);
+                    assertTrue(new BCryptPasswordEncoder()
+                            .matches("contrasena-segura", usuario.getPasswordHash()));
+                    assertEquals("kaiju@example.com", usuario.getCorreo());
+                    return usuario;
+                });
+
+        UsuarioAltaRequest request = new UsuarioAltaRequest();
+        request.setNombre("Cuenta de Kaiju");
+        request.setCorreo("KAIJU@example.com");
+        request.setPassword("contrasena-segura");
+        request.setRol(rol);
+
+        var respuesta = authService.registrarUsuarioKaiju(request);
+        assertEquals(rol.name(), respuesta.getRol());
+        assertTrue(respuesta.getActivo());
     }
 
     @Test
