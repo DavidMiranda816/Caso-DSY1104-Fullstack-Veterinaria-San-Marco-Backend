@@ -89,7 +89,13 @@ class CatalogAuthorizationHttpTest {
         mockMvc.perform(get("/api/productos")
                         .header("Authorization", "Bearer " + token("8", "CLIENTE")))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/productos")
+                        .header("Authorization", "Bearer " + token("8", "CLIENTE")))
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/categorias")
+                        .header("Authorization", "Bearer " + token("8", "CLIENTE")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/categorias")
                         .header("Authorization", "Bearer " + token("8", "CLIENTE")))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/productos")
@@ -147,6 +153,12 @@ class CatalogAuthorizationHttpTest {
                         .build());
 
         mockMvc.perform(post("/api/productos")
+                        .header("Authorization", "Bearer " + token("9", "CLIENTE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(productJson()))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/productos")
                         .header("Authorization", "Bearer " + token("9", "CLIENTE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(productJson()))

@@ -159,23 +159,44 @@ public class SecurityConfig {
                                 HttpMethod.GET,
                                 "/api/productos",
                                 "/api/productos/**",
+                                "/api/v1/productos",
+                                "/api/v1/productos/**",
                                 "/api/categorias",
-                                "/api/categorias/**")
+                                "/api/categorias/**",
+                                "/api/v1/categorias",
+                                "/api/v1/categorias/**")
                         .authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/productos",
-                                "/api/categorias")
+                                "/api/v1/productos",
+                                "/api/categorias",
+                                "/api/v1/categorias")
                         .hasRole("ADMIN")
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/productos/**",
-                                "/api/categorias/**")
+                                "/api/v1/productos/**",
+                                "/api/categorias/**",
+                                "/api/v1/categorias/**")
                         .hasRole("ADMIN")
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/api/productos/**",
-                                "/api/categorias/**")
+                                "/api/v1/productos/**",
+                                "/api/categorias/**",
+                                "/api/v1/categorias/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/solicitudes",
+                                "/api/v1/solicitudes/**")
+                        .hasAnyRole("ADMIN", "RECEPCIONISTA", "CLIENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/solicitudes")
+                        .hasRole("CLIENTE")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/solicitudes/*/estado")
+                        .hasAnyRole("ADMIN", "RECEPCIONISTA")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/solicitudes/**")
                         .hasRole("ADMIN")
                         .requestMatchers(
                                 "/swagger-ui.html",

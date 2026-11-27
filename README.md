@@ -18,7 +18,7 @@ El backend permite por defecto solicitudes desde `http://localhost:5173`. Para c
 
 La API permite `GET`, `POST`, `PUT`, `PATCH`, `DELETE` y `OPTIONS`, y las cabeceras `Authorization` y `Content-Type`.
 
-Esta API implementa autenticación (`/api/auth`), administración de usuarios (`/api/usuarios`) y CRUD de productos y categorías (`/api/productos`, `/api/categorias`). El frontend todavía conserva en `localStorage` los clientes y solicitudes; sus endpoints no forman parte de esta integración.
+Esta API implementa autenticación (`/api/auth`), administración de usuarios (`/api/usuarios`), CRUD versionado de productos y categorías (`/api/v1/productos`, `/api/v1/categorias`; también disponibles en las rutas heredadas), y gestión de citas (`/api/v1/solicitudes`). Los pedidos del carrito no forman parte del módulo de citas.
 
 ## Tecnologías
 
@@ -58,6 +58,51 @@ El registro público asigna siempre el rol `CLIENTE`. Las operaciones del catál
 | POST | `/api/categorias` | Crear categoría | ADMIN |
 | PUT | `/api/categorias/{id}` | Actualizar categoría | ADMIN |
 | DELETE | `/api/categorias/{id}` | Eliminar categoría | ADMIN |
+| GET | `/api/v1/solicitudes` | Listar citas | ADMIN/RECEPCIONISTA; CLIENTE solo propias |
+| GET | `/api/v1/solicitudes/{id}` | Consultar cita por folio | ADMIN/RECEPCIONISTA; CLIENTE solo propia |
+| POST | `/api/v1/solicitudes` | Crear cita propia | CLIENTE |
+| PATCH | `/api/v1/solicitudes/{id}/estado` | Cambiar estado/reprogramar cita | ADMIN/RECEPCIONISTA |
+| DELETE | `/api/v1/solicitudes/{id}` | Eliminar cita | ADMIN |
+
+Las rutas de catálogo versionadas tienen los mismos métodos, cuerpos y permisos que las heredadas `/api/productos` y `/api/categorias`. Ambas formas se mantienen durante la transición del frontend.
+
+### Contrato de citas
+
+`/api/v1/solicitudes` representa exclusivamente **citas**, no pedidos de productos del carrito. El alta pública autenticada recibe `mascota`, `fechaHora` (ISO-8601 local y futura) y `motivo`; el cliente y su identidad se derivan del JWT y el servidor asigna el estado inicial `PENDIENTE`. La respuesta incluye el folio, el cliente, la mascota, la fecha, el motivo y el estado. No se acepta un `clienteId` del cuerpo.
+
+Los estados permitidos son `PENDIENTE`, `CONFIRMADA`, `REPROGRAMADA`, `COMPLETADA` y `CANCELADA`. Las transiciones son: `PENDIENTE` → `CONFIRMADA`, `REPROGRAMADA` o `CANCELADA`; `CONFIRMADA` → `REPROGRAMADA`, `COMPLETADA` o `CANCELADA`; `REPROGRAMADA` → `CONFIRMADA` o `CANCELADA`. `COMPLETADA` y `CANCELADA` son terminales. Reprogramar requiere `fechaHora` futura en el mismo PATCH. Las validaciones y actualizaciones toman un bloqueo de escritura sobre la cita, dentro de una transacción.
+
+Ejemplo de listado:
+
+```json
+[
+  {
+    "id": 15,
+    "tipo": "CITA",
+    "clienteId": 8,
+    "clienteNombre": "Ana Pérez",
+    "clienteCorreo": "ana@example.com",
+    "mascota": "Luna",
+    "fechaHora": "2026-12-10T10:30:00",
+    "motivo": "Control anual",
+    "estado": "PENDIENTE",
+    "fechaCreacion": "2026-11-27T01:15:00",
+    "fechaActualizacion": "2026-11-27T01:15:00"
+  }
+]
+```
+
+Ejemplo de detalle: `GET /api/v1/solicitudes/15` devuelve el mismo objeto individual (sin el arreglo). Si el folio no existe, o pertenece a otro cliente autenticado, devuelve `404` con `{"mensaje":"Solicitud no encontrada"}`.
+
+Un cambio incompatible devuelve `409 Conflict` y conserva el estado original. Por ejemplo, completar directamente una cita pendiente:
+
+```json
+{
+  "mensaje": "No se puede cambiar una cita de PENDIENTE a COMPLETADA"
+}
+```
+
+El alta no define una regla de duplicidad que origine un `409`; el conflicto documentado corresponde a transiciones de estado incompatibles. El conflicto de correo duplicado sigue perteneciendo al registro/edición de cuentas, no a solicitudes.
 
 Los cuerpos coinciden con los formularios administrativos del frontend: un producto recibe `nombre`, `categoria`, `precio` y `stock`; `descripcion` e `imagen` son opcionales para la ficha pública. `categoria` es el nombre en texto que usa actualmente el formulario, no un ID. Una categoría recibe `nombre` y `descripcion`. Las respuestas agregan el `id` numérico generado por el backend.
 
@@ -78,9 +123,12 @@ Authorization: Bearer <token>
 | `GET /api/usuarios`, `GET /api/usuarios/{id}` | `ADMIN` |
 | `PUT /api/usuarios/{id}`, `PATCH /api/usuarios/{id}/desactivar` | `ADMIN` |
 | `PUT /api/usuarios/{id}` con `rol` | `ADMIN`; acepta `ADMIN`, `RECEPCIONISTA` o `CLIENTE`. Si se omite, conserva el rol. |
-| `GET /api/productos/**`, `GET /api/categorias/**` | Cualquier usuario autenticado y activo |
+| `GET /api/productos/**`, `GET /api/categorias/**`, `GET /api/v1/productos/**`, `GET /api/v1/categorias/**` | Cualquier usuario autenticado y activo |
 | `POST`, `PUT`, `DELETE` en `/api/productos/**` y `/api/categorias/**` | `ADMIN` |
-| Citas y fichas de pacientes | Rutas aún no implementadas; no se conceden permisos hasta que existan sus contratos |
+| `GET /api/v1/solicitudes/**` | `ADMIN` y `RECEPCIONISTA` ven todas; `CLIENTE` solo sus citas |
+| `POST /api/v1/solicitudes` | `CLIENTE`; el servidor establece la propiedad desde la sesión |
+| `PATCH /api/v1/solicitudes/{id}/estado` | `ADMIN` y `RECEPCIONISTA` |
+| `DELETE /api/v1/solicitudes/{id}` | `ADMIN` |
 | Rutas no declaradas en la configuración de seguridad | Denegadas por defecto |
 
 ### Roles y diferencias con el frontend
@@ -88,13 +136,13 @@ Authorization: Bearer <token>
 | Rol | Contrato |
 | --- | --- |
 | `ADMIN` | Gestiona usuarios, asigna roles y administra productos y categorías. |
-| `RECEPCIONISTA` | Identificador backend para Recepcionista/Operador. No gestiona usuarios ni modifica el catálogo; las operaciones de citas y fichas indicadas por la matriz aún no tienen endpoints backend. |
-| `CLIENTE` | Identificador canónico del dueño/cliente; no se acepta `DUENO` como alias. Las operaciones de citas e historial propio aún no tienen endpoints backend. |
+| `RECEPCIONISTA` | Gestiona las citas del día (listar, consultar, confirmar, reprogramar, completar y cancelar según las transiciones). No elimina citas, administra usuarios ni modifica el catálogo. |
+| `CLIENTE` | Identificador canónico del dueño/cliente; no se acepta `DUENO` como alias. Puede crear citas y consultar solo las propias. |
 | `VENDEDOR`, `ENCARGADO` | Roles heredados de otro proyecto; se conservan en la base de datos, pero no se pueden asignar mediante la edición de usuarios ni reciben permisos sobre rutas no declaradas. |
 
 La autorización usa el estado y rol actuales de la cuenta en la base de datos, no los roles incluidos en un JWT anterior. Por eso una cuenta desactivada recibe `401` y un cambio de rol tiene efecto inmediato en las rutas protegidas. El registro público siempre crea `CLIENTE`; el endpoint administrativo crea `ADMIN`.
 
-El frontend está en un repositorio separado y aún necesita alineación: su función `estaAutenticado()` depende de `obtenerTokenAdmin()`, que solo reconoce `ADMIN`; no existe un flujo o guard para `RECEPCIONISTA`. Su DTO de edición de usuario solo envía nombre y correo, por lo que la asignación de rol habilitada aquí requiere incorporar ese campo en el frontend. Además, las vistas actuales del catálogo son públicas, pero estos GET ahora exigen Bearer; al conectar Axios, el frontend deberá proteger esas vistas o rediseñar explícitamente la excepción.
+El frontend está en un repositorio separado y aún necesita alineación: su función `estaAutenticado()` depende de `obtenerTokenAdmin()`, que solo reconoce `ADMIN`; el cliente deberá habilitar menú, rutas y acciones de solicitudes para `RECEPCIONISTA` y consumir `/api/v1/solicitudes` en lugar de persistir las citas localmente. Los pedidos del carrito permanecen fuera de este contrato. Además, las vistas actuales del catálogo son públicas, pero sus GET exigen Bearer; al conectar Axios, el frontend deberá proteger esas vistas o rediseñar explícitamente la excepción.
 
 Swagger UI y OpenAPI permanecen públicos como excepción técnica para consultar y probar la documentación. El resto de rutas de negocio requiere autenticación según la matriz.
 
