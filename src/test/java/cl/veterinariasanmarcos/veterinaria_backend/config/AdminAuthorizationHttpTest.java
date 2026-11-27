@@ -1,8 +1,6 @@
 package cl.veterinariasanmarcos.veterinaria_backend.config;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -138,8 +136,10 @@ class AdminAuthorizationHttpTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.rol").value("VENDEDOR"));
 
-        verify(authService).registrarUsuarioKaiju(argThat(request ->
-                request.getRol() == UsuarioAltaRequest.RolKaiju.VENDEDOR));
+        var solicitud = org.mockito.ArgumentCaptor.forClass(UsuarioAltaRequest.class);
+        org.mockito.Mockito.verify(authService).registrarUsuarioKaiju(solicitud.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                UsuarioAltaRequest.RolKaiju.VENDEDOR, solicitud.getValue().getRol());
     }
 
     @Test
